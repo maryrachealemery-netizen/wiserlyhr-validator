@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiserlyHR - Interview Compliance Validator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        window.addEventListener('load', function() {
+            const { useState } = React;
+            const { createRoot } = ReactDOM;
+
+            const STATES = [
+                'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
+                'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
+                'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 
+                'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 
+                'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
+                'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 
+                'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 
+                'Wisconsin', 'Wyoming'
+            ];
+
+            function WiserlyHRValidator() {
+                const [questions, setQuestions] = useState('');
+                const [selectedStates, setSelectedStates] = useState(['California', 'New York', 'Texas']);
+                const [results, setResults] = useState(null);
+                const [loading, setLoading] = useState(false);
+                const [showStateDropdown, setShowStateDropdown] = useState(false);
+                const [expandedIssues, setExpandedIssues] = useState({});
+
+                const toggleState = (state) => {
+                    setSelectedStates(prev => 
+                        prev.includes(state) 
+                            ? prev.filter(s => s !== state)
+                            : [...prev, state]
+                    );
+                };
+
+                const toggleIssue = (index) => {
+                    setExpandedIssues(prev => ({
+                        ...prev,
+                        [index]: !prev[index]
+                    }));
+                };
+
+                const analyzeQuestions = async () => {
+                    if (!questions.trim()) {
+                        alert('Please enter at least one interview question');
+                        return;
+                    }
+
+                    if (selectedStates.length === 0) {
+                        alert('Please select at least one state');
+                        return;
+                    }
+
+                    setLoading(true);
+                    setResults(null);
+
+                    try {
+                        const response = await fetch('/.netlify/functions/analyze', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                questions,
+                                states: selectedStates,
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Server error');
+                        }
+
+                        const data = await response.json();
+                        setResults(data);
+                    } catch (error) {
+                        console.error('Analysis error:', error);
+                        alert('Error analyzing questions. Please try again.');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const getRiskColor = (risk) => {
+                    switch(risk?.toLowerCase()) {
+                        case 'high': return 'text-red-600 bg-red-50 border-red-200';
+                        case 'medium': return 'text-orange-600 bg-orange-50 border-orange-200';
+                        case 'low': return 'text-green-600 bg-green-50 border-green-200';
+                        default: return 'text-gray-600 bg-gray-50 border-gray-200';
+                    }
+                };
+
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50' },
+                    React.createElement('header', { className: 'bg-white border-b border-gray-200 shadow-sm' },
+                        React.createElement('div', { className: 'max-w-6xl mx-auto px-4 py-4 sm:px-6' },
+                            React.createElement('div', { className: 'flex items-center justify-between' },
+                                React.createElement('div', { className: 'flex items-center gap-3' },
+                                    React.createElement('div', { className: 'w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white text-xl' }, '🛡️'),
+                                    React.createElement('div', null,
+                                        React.createElement('h1', { className: 'text-2xl font-bold text-gray-900' }, 'WiserlyHR'),
+                                        React.createElement('p', { className: 'text-sm text-gray-600' }, 'Interview Compliance Validator')
+                                    )
+                                ),
+                                React.createElement('div', { className: 'text-right' },
+                                    React.createElement('div', { className: 'text-sm text-gray-600' }, 'Protected by AI'),
+                                    React.createElement('div', { className: 'text-xs text-gray-500' }, '50-State Coverage')
+                                )
+                            )
+                        )
+                    ),
+
+                    React.createElement('main', { className: 'max-w-6xl mx-auto px-4 py-8 sm:px-6' },
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow-md p-6 mb-6' },
+                            React.createElement('h2', { className: 'text-xl font-semibold text-gray-900 mb-4' }, 'Enter Interview Questions'),
+                            React.createElement('p', { className: 'text-sm text-gray-600 mb-4' }, 'Paste your interview questions below (one per line or separated by blank lines)'),
+                            
+                            React.createElement('textarea', {
+                                value: questions,
+                                onChange: (e) => setQuestions(e.target.value),
+                                placeholder: 'Example:\nAre you married?\nDo you have children?\nWhat year did you graduate?\nTell me about your experience with customer service.',
+                                className: 'w-full h-48 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-4'
+                            }),
+
+                            React.createElement('div', { className: 'mb-6' },
+                                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 'Select States Where You\'re Hiring'),
+                                React.createElement('div', { className: 'relative' },
+                                    React.createElement('button', {
+                                        onClick: () => setShowStateDropdown(!showStateDropdown),
+                                        className: 'w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-left flex items-center justify-between hover:bg-gray-50'
+                                    },
+                                        React.createElement('span', { className: 'text-gray-700' },
+                                            selectedStates.length === 0 
+                                                ? 'Select states...' 
+                                                : selectedStates.length + ' state' + (selectedStates.length !== 1 ? 's' : '') + ' selected'
+                                        ),
+                                        React.createElement('span', null, showStateDropdown ? '▲' : '▼')
+                                    ),
+
+                                    showStateDropdown && React.createElement('div', { className: 'absolute z-10 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto' },
+                                        React.createElement('div', { className: 'p-2' },
+                                            React.createElement('div', { className: 'grid grid-cols-2 gap-2' },
+                                                STATES.map(state => 
+                                                    React.createElement('label', { 
+                                                        key: state,
+                                                        className: 'flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded cursor-pointer'
+                                                    },
+                                                        React.createElement('input', {
+                                                            type: 'checkbox',
+                                                            checked: selectedStates.includes(state),
+                                                            onChange: () => toggleState(state),
+                                                            className: 'w-4 h-4'
+                                                        }),
+                                                        React.createElement('span', { className: 'text-sm text-gray-700' }, state)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                ),
+                                
+                                selectedStates.length > 0 && React.createElement('div', { className: 'mt-3 flex flex-wrap gap-2' },
+                                    selectedStates.map(state =>
+                                        React.createElement('span', { 
+                                            key: state,
+                                            className: 'inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm'
+                                        },
+                                            state,
+                                            React.createElement('button', { 
+                                                onClick: () => toggleState(state),
+                                                className: 'hover:text-blue-900 ml-1 font-bold'
+                                            }, '×')
+                                        )
+                                    )
+                                )
+                            ),
+
+                            React.createElement('button', {
+                                onClick: analyzeQuestions,
+                                disabled: loading,
+                                className: 'w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2'
+                            },
+                                loading 
+                                    ? [
+                                        React.createElement('div', { key: 'spinner', className: 'w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin' }),
+                                        'Analyzing Questions...'
+                                    ]
+                                    : '🛡️ Check Compliance'
+                            )
+                        ),
+
+                        results && React.createElement('div', { className: 'space-y-6' },
+                            React.createElement('div', { className: 'rounded-lg border-2 p-6 ' + getRiskColor(results.overallRisk) },
+                                React.createElement('h3', { className: 'text-xl font-bold mb-2' }, 'Overall Risk: ' + results.overallRisk),
+                                React.createElement('p', { className: 'text-sm opacity-90' }, results.summary)
+                            ),
+
+                            React.createElement('div', { className: 'space-y-4' },
+                                React.createElement('h3', { className: 'text-xl font-bold text-gray-900' }, 'Detailed Analysis'),
+                                
+                                results.analyses?.map((analysis, index) =>
+                                    React.createElement('div', { key: index, className: 'bg-white rounded-lg shadow-md overflow-hidden' },
+                                        React.createElement('button', {
+                                            onClick: () => toggleIssue(index),
+                                            className: 'w-full px-6 py-4 flex items-start gap-4 hover:bg-gray-50 transition-colors text-left'
+                                        },
+                                            React.createElement('div', { className: 'flex-1' },
+                                                React.createElement('div', { className: 'flex items-center gap-3 mb-2' },
+                                                    React.createElement('span', { 
+                                                        className: 'px-3 py-1 rounded-full text-xs font-semibold ' + getRiskColor(analysis.riskLevel)
+                                                    }, analysis.riskLevel + ' Risk'),
+                                                    analysis.affectedStates?.length > 0 && React.createElement('span', { className: 'text-xs text-gray-500' },
+                                                        analysis.affectedStates.length + ' state' + (analysis.affectedStates.length !== 1 ? 's' : '') + ' affected'
+                                                    )
+                                                ),
+                                                React.createElement('p', { className: 'font-medium text-gray-900 mb-1' }, '"' + analysis.question + '"'),
+                                                React.createElement('p', { className: 'text-sm text-gray-600' },
+                                                    analysis.status === 'problematic' ? 'Click to see details and alternatives' : 'This question appears compliant'
+                                                )
+                                            ),
+                                            React.createElement('span', null, expandedIssues[index] ? '▲' : '▼')
+                                        ),
+
+                                        expandedIssues[index] && analysis.status === 'problematic' && React.createElement('div', { 
+                                            className: 'px-6 pb-6 pt-2 border-t border-gray-100 space-y-4'
+                                        },
+                                            analysis.issues?.length > 0 && React.createElement('div', null,
+                                                React.createElement('h4', { className: 'font-semibold text-gray-900 mb-2' }, 'Issues Identified:'),
+                                                React.createElement('ul', { className: 'list-disc list-inside space-y-1' },
+                                                    analysis.issues.map((issue, i) =>
+                                                        React.createElement('li', { key: i, className: 'text-sm text-gray-700' }, issue)
+                                                    )
+                                                )
+                                            ),
+
+                                            analysis.affectedStates?.length > 0 && React.createElement('div', null,
+                                                React.createElement('h4', { className: 'font-semibold text-gray-900 mb-2' }, 'Affected States:'),
+                                                React.createElement('div', { className: 'flex flex-wrap gap-2' },
+                                                    analysis.affectedStates.map(state =>
+                                                        React.createElement('span', { 
+                                                            key: state,
+                                                            className: 'px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm'
+                                                        }, state)
+                                                    )
+                                                )
+                                            ),
+
+                                            analysis.legalBasis && React.createElement('div', null,
+                                                React.createElement('h4', { className: 'font-semibold text-gray-900 mb-2' }, 'Legal Basis:'),
+                                                React.createElement('p', { className: 'text-sm text-gray-700 bg-gray-50 p-3 rounded' }, analysis.legalBasis)
+                                            ),
+
+                                            analysis.alternative && React.createElement('div', null,
+                                                React.createElement('h4', { className: 'font-semibold text-green-700 mb-2' }, '✓ Compliant Alternative:'),
+                                                React.createElement('p', { className: 'text-sm text-gray-900 bg-green-50 p-3 rounded border border-green-200 font-medium' },
+                                                    '"' + analysis.alternative + '"'
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+
+                            React.createElement('div', { className: 'mt-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-8 text-white text-center' },
+                                React.createElement('h3', { className: 'text-2xl font-bold mb-3' }, 'Need a Full Compliance Audit?'),
+                                React.createElement('p', { className: 'text-blue-100 mb-6 max-w-2xl mx-auto' },
+                                    'Get a comprehensive review of your entire interview process, including phone screens, technical interviews, and final rounds. Professional report delivered in 48 hours.'
+                                ),
+                                React.createElement('div', { className: 'flex flex-col sm:flex-row gap-4 justify-center' },
+                                    React.createElement('a', {
+                                        href: 'https://wiserlyhr.com/audit',
+                                        className: 'bg-white text-blue-600 font-semibold py-3 px-8 rounded-lg hover:bg-blue-50 transition-colors'
+                                    }, 'Get Full Audit - $299'),
+                                    React.createElement('a', {
+                                        href: 'https://wiserlyhr.com/contact',
+                                        className: 'bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg hover:bg-blue-800 transition-colors border-2 border-white'
+                                    }, 'Talk to an Expert')
+                                )
+                            )
+                        )
+                    ),
+
+                    React.createElement('footer', { className: 'bg-gray-900 text-gray-300 mt-16 py-8' },
+                        React.createElement('div', { className: 'max-w-6xl mx-auto px-4 sm:px-6 text-center' },
+                            React.createElement('p', { className: 'text-sm mb-2' }, '© 2024 WiserlyHR. All rights reserved.'),
+                            React.createElement('p', { className: 'text-xs text-gray-400' },
+                                'This tool provides general guidance only. For specific legal advice, consult an employment attorney.'
+                            )
+                        )
+                    )
+                );
+            }
+
+            const root = createRoot(document.getElementById('app'));
+            root.render(React.createElement(WiserlyHRValidator));
+        });
+    </script>
+</body>
+</html>
