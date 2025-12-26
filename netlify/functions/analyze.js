@@ -1,4 +1,4 @@
-export default async (req) => {
+export default async (req, res) => {
   if (req.method !== "POST") {
     return {
       statusCode: 405,
@@ -9,19 +9,25 @@ export default async (req) => {
   try {
     const { questions, states } = JSON.parse(req.body);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    if (!questions || !states || !Array.isArray(states)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid request body" }),
+      };
+    }
+
+    const apiResponse = await fetch("https://api.anthropic.com/v1/complete", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        messages: [{
-          role: "user",
-          content: `You are an employment law compliance expert. Analyze these interview questions for legal compliance issues across these US states: ${states.join(', ')}.
+        max_tokens_to_sample: 4000,
+        temperature: 0,
+        stop_sequences: ["\n\n"],
+        input: `You are an employment law compliance expert. Analyze these interview questions for legal compliance issues across these US states: ${states.join(', ')}.
 
 Interview Questions:
 ${questions}
@@ -51,14 +57,21 @@ Format your response as JSON with this structure:
 }
 
 Respond ONLY with valid JSON, no other text.`
-        }]
       }),
     });
 
-    const data = await response.json();
-    const content = data.content[0].text;
-    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    const parsed = JSON.parse(cleanContent);
+    const data = await apiResponse.json();
+
+    // If API returned a string (Anthropic often returns text), parse it
+    let parsed;
+    if (typeof data.completion === "string") {
+      const cleanContent = data.completion.replace(/```json\n?|\n?```/g, '').trim();
+      parsed = JSON.parse(cleanContent);
+    } else if (typeof data.completion === "object") {
+      parsed = data.completion; // Already JSON
+    } else {
+      throw new Error("Unexpected API response format");
+    }
 
     return {
       statusCode: 200,
