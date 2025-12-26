@@ -2,6 +2,6 @@
   "name": "wiserlyhr-validator",
   "version": "1.0.0",
   "scripts": {
-    "build": "echo 'Using static HTML'"
+    "build": "exit 0"
   }
 }
