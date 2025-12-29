@@ -1,5 +1,4 @@
 export default async (req) => {
-  // Only allow POST requests
   if (req.method !== "POST") {
     return {
       statusCode: 405,
@@ -8,10 +7,8 @@ export default async (req) => {
   }
 
   try {
-    // Parse the incoming data
     const { questions, states } = JSON.parse(req.body);
     
-    // Validate the data
     if (!questions || !states || !Array.isArray(states)) {
       return {
         statusCode: 400,
@@ -19,7 +16,8 @@ export default async (req) => {
       };
     }
 
-    // Call the NEW Anthropic API (this is the fix!)
+    console.log("Calling Anthropic API with:", { questions, states });
+
     const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -68,7 +66,6 @@ Respond ONLY with valid JSON, no other text.`
       }),
     });
 
-    // Check if the API call worked
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json();
       console.error("Anthropic API error:", errorData);
@@ -81,19 +78,13 @@ Respond ONLY with valid JSON, no other text.`
       };
     }
 
-    // Get the response from Claude
     const data = await apiResponse.json();
+    console.log("Anthropic API response:", data);
     
-    // Extract the text from the new API format
     const responseText = data.content[0].text;
-    
-    // Clean up any markdown formatting that Claude might add
     const cleanContent = responseText.replace(/```json\n?|\n?```/g, '').trim();
-    
-    // Parse it into a JavaScript object
     const parsed = JSON.parse(cleanContent);
 
-    // Send it back to the frontend
     return {
       statusCode: 200,
       body: JSON.stringify(parsed),
