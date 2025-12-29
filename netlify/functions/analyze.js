@@ -1,4 +1,6 @@
 export default async (req) => {
+  console.log("Function called with method:", req.method);
+  
   if (req.method !== "POST") {
     return {
       statusCode: 405,
@@ -7,17 +9,23 @@ export default async (req) => {
   }
 
   try {
+    console.log("Parsing request body...");
     const { questions, states } = JSON.parse(req.body);
     
+    console.log("Received:", { questions, states });
+    
     if (!questions || !states || !Array.isArray(states)) {
+      console.error("Invalid request body");
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Invalid request body" }),
       };
     }
 
-    console.log("Calling Anthropic API with:", { questions, states });
+    console.log("API Key exists:", !!process.env.ANTHROPIC_API_KEY);
+    console.log("API Key prefix:", process.env.ANTHROPIC_API_KEY?.substring(0, 10));
 
+    console.log("Calling Anthropic API...");
     const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -66,9 +74,11 @@ Respond ONLY with valid JSON, no other text.`
       }),
     });
 
+    console.log("API Response status:", apiResponse.status);
+
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json();
-      console.error("Anthropic API error:", errorData);
+      console.error("Anthropic API error:", JSON.stringify(errorData));
       return {
         statusCode: apiResponse.status,
         body: JSON.stringify({ 
@@ -79,12 +89,13 @@ Respond ONLY with valid JSON, no other text.`
     }
 
     const data = await apiResponse.json();
-    console.log("Anthropic API response:", data);
+    console.log("Received response from Anthropic");
     
     const responseText = data.content[0].text;
     const cleanContent = responseText.replace(/```json\n?|\n?```/g, '').trim();
     const parsed = JSON.parse(cleanContent);
 
+    console.log("Successfully parsed response");
     return {
       statusCode: 200,
       body: JSON.stringify(parsed),
@@ -92,11 +103,13 @@ Respond ONLY with valid JSON, no other text.`
 
   } catch (error) {
     console.error("Function error:", error);
+    console.error("Error stack:", error.stack);
     return {
       statusCode: 500,
       body: JSON.stringify({ 
         error: "Server error", 
-        message: error.message 
+        message: error.message,
+        stack: error.stack
       }),
     };
   }
