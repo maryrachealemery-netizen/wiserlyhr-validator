@@ -1,4 +1,4 @@
-export default async (req, res) => {
+export default async (req) => {
   if (req.method !== "POST") {
     return {
       statusCode: 405,
@@ -8,7 +8,7 @@ export default async (req, res) => {
 
   try {
     const { questions, states } = JSON.parse(req.body);
-
+    
     if (!questions || !states || !Array.isArray(states)) {
       return {
         statusCode: 400,
@@ -16,18 +16,20 @@ export default async (req, res) => {
       };
     }
 
-    const apiResponse = await fetch("https://api.anthropic.com/v1/complete", {
+    const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens_to_sample: 4000,
-        temperature: 0,
-        stop_sequences: ["\n\n"],
-        input: `You are an employment law compliance expert. Analyze these interview questions for legal compliance issues across these US states: ${states.join(', ')}.
+        max_tokens: 4000,
+        messages: [
+          {
+            role: "user",
+            content: `You are an employment law compliance expert. Analyze these interview questions for legal compliance issues across these US states: ${states.join(', ')}.
 
 Interview Questions:
 ${questions}
@@ -57,31 +59,31 @@ Format your response as JSON with this structure:
 }
 
 Respond ONLY with valid JSON, no other text.`
+          }
+        ]
       }),
     });
 
     const data = await apiResponse.json();
-
-    // If API returned a string (Anthropic often returns text), parse it
-    let parsed;
-    if (typeof data.completion === "string") {
-      const cleanContent = data.completion.replace(/```json\n?|\n?```/g, '').trim();
-      parsed = JSON.parse(cleanContent);
-    } else if (typeof data.completion === "object") {
-      parsed = data.completion; // Already JSON
-    } else {
-      throw new Error("Unexpected API response format");
-    }
+    
+    // Extract text from Claude's new response format
+    const responseText = data.content[0].text;
+    const cleanContent = responseText.replace(/```json\n?|\n?```/g, '').trim();
+    const parsed = JSON.parse(cleanContent);
 
     return {
       statusCode: 200,
       body: JSON.stringify(parsed),
     };
+
   } catch (error) {
     console.error("Function error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Server error", message: error.message }),
+      body: JSON.stringify({ 
+        error: "Server error", 
+        message: error.message 
+      }),
     };
   }
 };
